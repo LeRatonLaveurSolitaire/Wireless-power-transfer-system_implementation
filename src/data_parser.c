@@ -1,4 +1,5 @@
 #include "data_parser.h"
+#include "kiss_fft.h"
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -24,19 +25,24 @@ System_Data data_parser(const MatFileData raw_data) {
     stop_index--;
   }
 
-  output_data.data_len = stop_index - start_index + 1;
-
+  if (stop_index - start_index + 1 > 0) {
+    output_data.data_len = stop_index - start_index + 1;
+  } else {
+    fprintf(stderr, "Error parsing the .mat file data.\n");
+    exit(1);
+  }
   // Alocate memory to each data
 
-  output_data.prbs = (double *)malloc(output_data.data_len * sizeof(double));
+  output_data.prbs =
+      (kiss_fft_scalar *)malloc(output_data.data_len * sizeof(kiss_fft_scalar));
   output_data.clean_current =
-      (double *)malloc(output_data.data_len * sizeof(double));
+      (kiss_fft_scalar *)malloc(output_data.data_len * sizeof(kiss_fft_scalar));
   output_data.clean_voltage =
-      (double *)malloc(output_data.data_len * sizeof(double));
+      (kiss_fft_scalar *)malloc(output_data.data_len * sizeof(kiss_fft_scalar));
   output_data.noisy_current =
-      (double *)malloc(output_data.data_len * sizeof(double));
+      (kiss_fft_scalar *)malloc(output_data.data_len * sizeof(kiss_fft_scalar));
   output_data.noisy_voltage =
-      (double *)malloc(output_data.data_len * sizeof(double));
+      (kiss_fft_scalar *)malloc(output_data.data_len * sizeof(kiss_fft_scalar));
 
   // Define data value
 
@@ -56,5 +62,7 @@ System_Data data_parser(const MatFileData raw_data) {
     output_data.prbs[i] =
         raw_data.data[(start_index + i) * raw_data.num_columns + prbs_index];
   }
+
+  free(raw_data.data);
   return output_data;
 };

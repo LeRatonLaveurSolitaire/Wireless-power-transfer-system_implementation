@@ -1,20 +1,20 @@
 #ifndef DATA_PARSER
 #define DATA_PARSER
 
-#include <stdint.h>
+#include "kiss_fft.h"
 #include "open_mat_file.h"
+#include <stdint.h>
 
 // Strucutre of the data before analysis
 
 typedef struct {
-  double *prbs;
-  double *clean_current;
-  double *clean_voltage;
-  double *noisy_current;
-  double *noisy_voltage;
+  kiss_fft_scalar *prbs;
+  kiss_fft_scalar *clean_current;
+  kiss_fft_scalar *clean_voltage;
+  kiss_fft_scalar *noisy_current;
+  kiss_fft_scalar *noisy_voltage;
   uint64_t data_len;
 } System_Data;
-
 
 // Data parser function
 

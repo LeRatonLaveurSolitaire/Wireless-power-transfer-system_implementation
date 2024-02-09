@@ -5,7 +5,7 @@ CC = gcc
 CFLAGS = -Wall -I./include
 
 # Linker flags
-LDFLAGS = -lhdf5
+LDFLAGS = -lhdf5 -lm
 
 # Source and object file directories
 SRC_DIR = src
