@@ -56,3 +56,5 @@ main
 compile_commands.json
 .cache
 clangd
+*.py
+*.csv

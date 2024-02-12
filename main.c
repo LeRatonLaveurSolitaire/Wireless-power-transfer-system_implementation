@@ -1,67 +1,7 @@
-#include "data_parser.h"
-#include "kiss_fft.h"
-#include "kiss_fftr.h"
+#include "identification.h"
 #include "open_mat_file.h"
-#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-// Function to open, read, and close the .mat file, returning the extracted data
-
-typedef struct {
-  kiss_fft_cpx *cc; // Clean current FFT
-  kiss_fft_cpx *cv; // Clean voltage FFT
-  kiss_fft_cpx *nc; // Noisy current FFT
-  kiss_fft_cpx *nv; // Noisy voltage FFT
-  float_t *freqs_list;
-  uint32_t data_len;
-
-} fft_data;
-
-typedef struct {
-  kiss_fft_cpx *data; // Clean current FFT
-  float_t *freqs_list;
-  uint32_t data_len;
-} Impedance;
-
-// Function that compute the FFT of the current and voltage (noisy and clean)
-fft_data compute_fft(const System_Data in, const float sampling_period) {
-  int n = in.data_len - in.data_len % 2; // ensure that n is even
-  kiss_fftr_cfg cfg = kiss_fftr_alloc(n, 0, NULL, NULL);
-  fft_data out;
-  out.data_len = (in.data_len - in.data_len % 2) / +1;
-
-  // allocate memory of the FFT signals
-  out.cc = (kiss_fft_cpx *)malloc(out.data_len * sizeof(kiss_fft_cpx));
-  out.cv = (kiss_fft_cpx *)malloc(out.data_len * sizeof(kiss_fft_cpx));
-  out.nc = (kiss_fft_cpx *)malloc(out.data_len * sizeof(kiss_fft_cpx));
-  out.nv = (kiss_fft_cpx *)malloc(out.data_len * sizeof(kiss_fft_cpx));
-
-  // Compute the FTTs
-  kiss_fftr(cfg, in.clean_current, out.cc);
-  kiss_fftr(cfg, in.clean_voltage, out.cv);
-  kiss_fftr(cfg, in.noisy_current, out.nc);
-  kiss_fftr(cfg, in.noisy_voltage, out.nv);
-
-  // Define the frequency list
-  out.freqs_list = (float_t *)malloc(out.data_len * sizeof(float_t));
-
-  for (int i = 0; i < out.data_len; i++) {
-    out.freqs_list[i] = i / (sampling_period * out.data_len);
-  }
-
-  // Free unused memory
-  free(cfg);
-  free(in.clean_current);
-  free(in.clean_voltage);
-  free(in.noisy_current);
-  free(in.noisy_voltage);
-  free(in.prbs);
-
-  kiss_fft_cleanup();
-
-  return out;
-}
 
 int main() {
   // Specify the path to the .mat file
@@ -74,22 +14,33 @@ int main() {
   // Read the .mat file and get the extracted data
   MatFileData matData = readMatFile(file_path, dataset_name);
 
-  // Parse the data to extract the different steps
+  // Parse the data to extract the different steps (clean, PRBS)
   System_Data parsed_data = data_parser(matData);
 
   // Compute FFT of parsed signals
+  float_t sampling_period = pow(10, -6); // Ts = 1e-6
+  Fft_Data fft_signals = compute_fft(parsed_data, sampling_period);
 
-  float_t sampling_period = pow(10, -6);
+  // Compute Impedance from the FFT signals
+  Impedance sys_impedance = compute_impedance(fft_signals);
 
-  fft_data fft_signals = compute_fft(parsed_data, sampling_period);
+  Impedance filtered_impedance = smoothing_filter(sys_impedance, 1.07);
+
+  // printf("Frequency,Magnitude,Angle, filterd_mag,filtered angle\n");
+  char to_print[150];
+  for (int i = 0; i < sys_impedance.data_len; i++) {
+    sprintf(to_print, "%f,%f,%f,%f,%f\n", sys_impedance.freqs_list[i],
+            sys_impedance.data[i].amplitude, sys_impedance.data[i].angle,
+            filtered_impedance.data[i].amplitude,
+            filtered_impedance.data[i].angle);
+    printf("%s", to_print);
+  }
 
   // Free allocated memory
+  free(sys_impedance.data);
+  free(sys_impedance.freqs_list);
+  free(filtered_impedance.data);
 
-  free(fft_signals.cc);
-  free(fft_signals.cv);
-  free(fft_signals.nc);
-  free(fft_signals.nv);
-  free(fft_signals.freqs_list);
-
+  // printf("Program ran successfully ! \\`o`/ \n");
   return 0;
 }

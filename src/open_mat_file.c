@@ -1,6 +1,6 @@
 #include "open_mat_file.h"
 #include <hdf5.h>
-// #include <stdio.h>
+#include <stdio.h>
 #include <stdlib.h>
 
 MatFileData readMatFile(const char *file_path, const char *dataset_name) {
@@ -34,6 +34,12 @@ MatFileData readMatFile(const char *file_path, const char *dataset_name) {
   // Allocate memory for the data
   matData.data =
       (double *)malloc(matData.num_rows * matData.num_columns * sizeof(double));
+
+  // check for memory allocation fail
+  if (matData.data == NULL) {
+    fprintf(stderr, "Memory allocation failed\n");
+    exit(1);
+  }
 
   // Read the data from the dataset
   H5Dread(dataset_id, H5T_NATIVE_DOUBLE, H5S_ALL, H5S_ALL, H5P_DEFAULT,
