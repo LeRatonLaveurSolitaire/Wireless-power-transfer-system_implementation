@@ -40,22 +40,23 @@ typedef struct {
 
 // define basic complex arithmetics
 
-kiss_fft_cpx add_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2);
-kiss_fft_cpx sub_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2);
-kiss_fft_cpx mul_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2);
-kiss_fft_cpx div_cpx(kiss_fft_cpx c1, kiss_fft_cpx c2);
-float_t mag_cpx(kiss_fft_cpx c);
-float_t ang_cpx(kiss_fft_cpx c);
+kiss_fft_cpx add_cpx(kiss_fft_cpx, kiss_fft_cpx);
+kiss_fft_cpx sub_cpx(kiss_fft_cpx, kiss_fft_cpx);
+kiss_fft_cpx mul_cpx(kiss_fft_cpx, kiss_fft_cpx);
+kiss_fft_cpx div_cpx(kiss_fft_cpx, kiss_fft_cpx);
+float_t mag_cpx(kiss_fft_cpx);
+float_t ang_cpx(kiss_fft_cpx);
 
 // Data parser function
 
-System_Data data_parser(const MatFileData row_data);
+System_Data data_parser(const MatFileData);
 
-Fft_Data compute_fft(const System_Data in, const float sampling_period);
+Fft_Data compute_fft(const System_Data, const float);
 
-Impedance compute_impedance(const Fft_Data sys_fft);
+Impedance compute_impedance(const Fft_Data);
 
-Impedance smoothing_filter(const Impedance sys_impedance,
-                           const float_t smoothing_factor);
+Impedance smoothing_filter(const Impedance, const float_t);
 
+void create_input_tensor(const Impedance, const float, const float, const float,
+                         float_t *);
 #endif

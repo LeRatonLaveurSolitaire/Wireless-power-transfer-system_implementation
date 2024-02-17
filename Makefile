@@ -2,7 +2,7 @@
 CC = gcc
 
 # Compiler flags
-CFLAGS = -Wall -I./include
+CFLAGS = -Wall -Iinclude
 
 # Linker flags
 LDFLAGS = -lhdf5 -lm

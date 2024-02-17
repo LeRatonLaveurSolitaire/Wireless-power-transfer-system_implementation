@@ -84,6 +84,7 @@ System_Data data_parser(const MatFileData raw_data) {
     fprintf(stderr, "Error parsing the .mat file data.\n");
     exit(1);
   }
+  output_data.data_len = output_data.data_len / 2;
   // Alocate memory to each data
 
   output_data.prbs =
@@ -131,11 +132,17 @@ System_Data data_parser(const MatFileData raw_data) {
                           raw_data.num_columns +
                       voltage_index];
     output_data.noisy_current[i] =
-        raw_data.data[(start_index + i) * raw_data.num_columns + current_index];
+        raw_data.data[(start_index + output_data.data_len + i) *
+                          raw_data.num_columns +
+                      current_index];
     output_data.noisy_voltage[i] =
-        raw_data.data[(start_index + i) * raw_data.num_columns + voltage_index];
+        raw_data.data[(start_index + output_data.data_len + i) *
+                          raw_data.num_columns +
+                      voltage_index];
     output_data.prbs[i] =
-        raw_data.data[(start_index + i) * raw_data.num_columns + prbs_index];
+        raw_data.data[(start_index + output_data.data_len + i) *
+                          raw_data.num_columns +
+                      prbs_index];
   }
 
   free(raw_data.data);
@@ -143,8 +150,7 @@ System_Data data_parser(const MatFileData raw_data) {
 };
 
 Fft_Data compute_fft(const System_Data in, const float sampling_period) {
-  uint32_t n =
-      (in.data_len / 2) - ((in.data_len / 2) % 2); // ensure that n is even
+  uint32_t n = (in.data_len) - ((in.data_len) % 4); // ensure that n is even
   uint32_t start_index =
       in.data_len - n; // take only the second PRBS injection into account
   // define FFT config
@@ -190,7 +196,7 @@ Fft_Data compute_fft(const System_Data in, const float sampling_period) {
   }
 
   for (int i = 0; i < out.data_len; i++) {
-    out.freqs_list[i] = i / (sampling_period * out.data_len);
+    out.freqs_list[i] = i / (2 * sampling_period * out.data_len);
   }
 
   // Free unused memory
@@ -281,4 +287,47 @@ Impedance smoothing_filter(const Impedance sys_impedance,
   }
 
   return filtered_impedance;
+}
+
+void create_input_tensor(const Impedance sys_impedance, const float R,
+                         const float L, const float C, float_t *input_tensor) {
+
+  // list of the frequencies at which the input tensor is created
+  uint32_t freqs[] = {50000,  53937,  58185,  62767,  67710,
+                      73042,  78794,  85000,  91693,  98914,
+                      106704, 115107, 124172, 133951, 144500};
+  uint32_t current_index = 0;
+  for (uint8_t i = 0; i < 15;
+       i++) { // use the derivative of freqs[i] -
+              // sys_impedance.freqs_list[current_index] to find the closest
+              // indexs to the wanted freqs
+    while (freqs[i] - sys_impedance.freqs_list[current_index] > 0) {
+      current_index++;
+    }
+    current_index =
+        abs((int)(freqs[i] - sys_impedance.freqs_list[current_index - 1])) <
+                abs((int)(freqs[i] - sys_impedance.freqs_list[current_index]))
+            ? current_index - 1
+            : current_index;
+    // input_tensor[i * 2] = (float)i;
+    // input_tensor[i * 2 + 1] =sys_impedance.freqs_list[current_index];
+
+    kiss_fft_cpx z1_cpx;
+    z1_cpx.r = R;
+    z1_cpx.i = L * 2 * M_PI * sys_impedance.freqs_list[current_index] -
+               1 / (C * 2 * M_PI * sys_impedance.freqs_list[current_index]);
+
+    kiss_fft_cpx z2_cpx;
+    z2_cpx.r = sys_impedance.data[current_index].amplitude *
+                   cos(sys_impedance.data[current_index].angle) -
+               z1_cpx.r;
+    z2_cpx.i = sys_impedance.data[current_index].amplitude *
+                   sin(sys_impedance.data[current_index].angle) -
+               z1_cpx.i;
+
+    input_tensor[i * 2] = mag_cpx(z2_cpx);
+    input_tensor[i * 2 + 1] = ang_cpx(z2_cpx);
+  }
+
+  return;
 }
